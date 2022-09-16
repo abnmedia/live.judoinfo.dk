@@ -1,0 +1,25 @@
+---
+kind: pipeline
+type: docker
+name: linux
+
+steps:
+- name: build
+  image: node:lts-alpine
+  commands:
+  - npm install
+  - npm run build
+- name: deploy
+  image: eeacms/rsync
+  environment:
+    SSH_KEY:
+      from_secret: ssh_key
+  commands:
+  - mkdir -p ~/.ssh
+  - eval `ssh-agent -s`
+  - echo "$SSH_KEY" | ssh-add -
+  - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  - rsync --delete -ra -e "ssh -p 22" dist/ ci@judoassistant.com:/var/www/live.judoassistant.com/html
+  when:
+    event:
+    - tag
